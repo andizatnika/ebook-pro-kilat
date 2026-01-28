@@ -67,6 +67,17 @@ export const SetupApiKeyModal: React.FC<SetupApiKeyModalProps> = ({
             </div>
           </div>
 
+          {/* Get API Key Button */}
+          <a
+            href="https://aistudio.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-full items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-lg transition-all"
+          >
+            <Key size={18} />
+            Dapatkan API Key Google Gemini
+          </a>
+
           {/* Free Tier Info */}
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex gap-3">
             <CheckCircle className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" size={18} />
