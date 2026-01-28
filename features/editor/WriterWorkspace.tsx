@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { EbookData, Chapter, GenerationState, AppStep, ImageRegistry } from '../../types';
-import { Play, Check, Clock, Loader2, FileText, ChevronDown, Edit2, Save, Image as ImageIcon, RefreshCw, Wand2, Cloud, CloudUpload, AlertCircle, Plus, AlertTriangle, RotateCcw, Trash2 } from 'lucide-react';
+import { Play, Check, Clock, Loader2, Download, FileText, ChevronDown, Edit2, Save, Image as ImageIcon, RefreshCw, Wand2, Cloud, CloudUpload, AlertCircle, Plus, AlertTriangle, RotateCcw, Trash2 } from 'lucide-react';
 import { generateIllustration } from '../../services/geminiService';
 
 interface WriterWorkspaceProps {
@@ -153,73 +153,139 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
     setIsEditing(false);
   };
 
-  // --- HELPER: TEXT CLEANING UTILS ---
-  const cleanMarkdownForExport = (content: string, imageRegistry: ImageRegistry) => {
-    let clean = content || '';
-
-    // 1. Remove Double Titles (Heading 1 in Markdown vs Chapter Title)
-    // Regex matches: Start of string -> # Title -> Newline
-    clean = clean.replace(/^#\s+.*(\r\n|\r|\n)/, ''); 
-    // Regex matches: Bold title at start -> **Title** -> Newline
-    clean = clean.replace(/^\*\*.*\*\*(\r\n|\r|\n)/, '');
-
-    // 2. Inject Images Logic
-    const imgRegex = /^>\s*\*\*\[IMAGE PROMPT\]:\*\*(.*?)$/gm;
-    clean = clean.replace(imgRegex, (match) => {
-      const promptKey = match.trim();
-      const base64Data = imageRegistry[promptKey];
-      
-      if (base64Data) {
-        // Return HTML Image Tag
-        // Use inline styles to ensure PDF renderer respects dimensions
-        return `<div class="pdf-image-container" style="display: flex; justify-content: center; margin: 24px 0;">
-                  <img src="${base64Data}" alt="Illustration" style="max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #eee;" />
-                </div>`;
-      }
-      return ''; // Remove prompt if no image, or keep specific placeholder if needed
-    });
-
-    return clean;
-  };
-
-  const convertMarkdownToStaticHtml = (markdown: string): string => {
-    let html = markdown
-      // Headings
-      .replace(/^# (.*$)/gim, '<h2 style="font-size: 20pt; color: #312e81; margin-top: 20px; margin-bottom: 12px; font-weight: bold; font-family: sans-serif;">$1</h2>')
-      .replace(/^## (.*$)/gim, '<h2 style="font-size: 18pt; color: #4338ca; margin-top: 18px; margin-bottom: 10px; font-weight: bold; font-family: sans-serif;">$1</h2>')
-      .replace(/^### (.*$)/gim, '<h3 style="font-size: 14pt; color: #1e293b; margin-top: 16px; margin-bottom: 8px; font-weight: 600; font-family: sans-serif;">$1</h3>')
-      // Formatting
-      .replace(/\*\*(.*?)\*\*/gim, '<b>$1</b>')
-      .replace(/\*(.*?)\*/gim, '<i>$1</i>')
-      // Blockquotes
-      .replace(/^> (.*$)/gim, '<blockquote style="border-left: 4px solid #6366f1; background-color: #f5f7ff; padding: 12px 16px; margin: 16px 0; font-style: italic; color: #3730a3;">$1</blockquote>')
-      // Paragraphs (Double newline)
-      .replace(/\n\n/g, '<p style="margin-bottom: 12px; text-align: justify; line-height: 1.6;">')
-      // Line breaks
-      .replace(/\n/g, '<br>');
-
-    // Wrap in P if not started with tag
-    if (!html.trim().startsWith('<')) {
-      html = '<p style="margin-bottom: 12px; text-align: justify; line-height: 1.6;">' + html + '</p>';
-    }
-    
-    return html;
-  };
-
-  // --- EXPORT DOC FUNCTION (WORD) ---
+  // --- EXPORT DOC FUNCTION (IMPROVED FOR IMAGES, STYLE & TOC) ---
   const handleExportDOC = async () => {
     setExportingFormat('doc');
     await new Promise(resolve => setTimeout(resolve, 50)); // Give UI time to update
 
     try {
+      // Inline styles for Word compatibility
       const cssStyles = `
         <style>
-          body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; color: #000; }
-          .title-page { text-align: center; padding-top: 200px; page-break-after: always; }
-          h1 { font-family: 'Arial', sans-serif; font-size: 24pt; color: #2E74B5; page-break-before: always; }
-          h2 { font-family: 'Arial', sans-serif; font-size: 18pt; color: #2E74B5; margin-top: 24px; }
-          img { display: block; margin: 20px auto; max-width: 100%; height: auto; }
-          p { margin-bottom: 12px; text-align: justify; }
+          @page {
+            margin: 2.54cm; /* Standard 1 inch margins */
+          }
+          body { 
+            font-family: 'Times New Roman', serif; 
+            font-size: 12pt; 
+            line-height: 1.6; 
+            color: #334155; 
+          }
+          .title-page { 
+            text-align: center; 
+            padding-top: 150px; 
+            page-break-after: always; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+          h1.main-title { 
+            font-family: 'Arial', sans-serif; 
+            font-size: 32pt; 
+            font-weight: bold; 
+            color: #1e293b; 
+            margin-bottom: 24px; 
+          }
+          .subtitle { 
+            font-family: 'Georgia', serif; 
+            font-size: 18pt; 
+            font-style: italic; 
+            color: #64748b; 
+            margin-bottom: 40px;
+          }
+
+          /* TOC Styles */
+          .toc-title {
+            font-family: 'Arial', sans-serif;
+            font-size: 24pt;
+            font-weight: bold;
+            color: #1e293b;
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          /* We use Table for TOC to ensure alignment in Word */
+          table.toc-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          td.toc-item {
+            padding: 8px 0;
+            border-bottom: 1px dotted #cbd5e1; /* Dotted line separator */
+          }
+          a.toc-link {
+            text-decoration: none;
+            color: #1e293b;
+            font-family: 'Arial', sans-serif;
+            font-size: 12pt;
+            display: block;
+            width: 100%;
+          }
+          
+          /* Chapter Headers */
+          h1.chapter-title { 
+            font-family: 'Arial', sans-serif; 
+            font-size: 24pt; 
+            color: #312e81; /* Indigo-900 */
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+            margin-top: 0;
+            margin-bottom: 24px;
+            page-break-before: always; 
+          }
+          
+          /* Content Headers */
+          h2 { 
+            font-family: 'Arial', sans-serif; 
+            font-size: 18pt; 
+            color: #4338ca; /* Indigo-700 */
+            margin-top: 24px; 
+            margin-bottom: 12px;
+          }
+          h3 { 
+            font-family: 'Arial', sans-serif; 
+            font-size: 14pt; 
+            font-weight: bold;
+            color: #1e293b; 
+            margin-top: 18px; 
+            margin-bottom: 8px; 
+          }
+          
+          p { 
+            margin-bottom: 12px; 
+            text-align: justify; 
+          }
+          
+          blockquote {
+            background-color: #eef2ff;
+            border-left: 4px solid #6366f1;
+            padding: 12px 16px;
+            margin: 16px 24px;
+            font-style: italic;
+            color: #3730a3;
+          }
+          
+          ul { list-style-type: disc; margin-left: 24px; margin-bottom: 16px; }
+          ol { list-style-type: decimal; margin-left: 24px; margin-bottom: 16px; }
+          li { margin-bottom: 6px; }
+
+          .image-container {
+            text-align: center;
+            margin: 24px 0;
+            page-break-inside: avoid;
+          }
+          img { 
+            max-width: 100%; 
+            height: auto; 
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+          }
+          .img-caption {
+            font-size: 9pt;
+            color: #94a3b8;
+            font-style: italic;
+            margin-top: 4px;
+          }
         </style>
       `;
 
@@ -227,22 +293,93 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
       
       const titlePage = `
         <div class="title-page">
-          <div style="font-size: 32pt; font-weight: bold; margin-bottom: 24px;">${ebookData.title}</div>
-          <div style="font-size: 18pt; font-style: italic; color: #555;">${ebookData.subtitle}</div>
-          <p style="margin-top: 100px; font-size: 10pt; color: #888;">Generated by Pro Ebook Kilat AI</p>
+          <h1 class="main-title">${ebookData.title}</h1>
+          <div class="subtitle">${ebookData.subtitle}</div>
+          <p style="margin-top: 100px; font-size: 10pt; color: #94a3b8;">Generated by Pro Ebook Kilat AI</p>
         </div>
       `;
+
+      // --- GENERATE TABLE OF CONTENTS (Using Table for Layout) ---
+      // Word handles tables much better than CSS lists for alignment
+      const tocRows = ebookData.outline
+        .filter(c => c.content) // Only show chapters with content
+        .map(c => `
+          <tr>
+            <td class="toc-item">
+              <a href="#${c.id}" class="toc-link">${c.title}</a>
+            </td>
+          </tr>
+        `).join('');
+
+      const tocSection = `
+        <div class="toc-container">
+          <h1 class="toc-title">Daftar Isi</h1>
+          <table class="toc-table" cellpadding="0" cellspacing="0">
+            ${tocRows}
+          </table>
+        </div>
+        <br clear=all style='mso-special-character:line-break;page-break-before:always'>
+      `;
+
+      // Helper for clean extraction
+      const processContent = (content: string) => {
+          if (!content) return '';
+          let processed = content;
+
+          // 1. INJECT IMAGES
+          const imgRegex = /^>\s*\*\*\[IMAGE PROMPT\]:\*\*(.*?)$/gm;
+          processed = processed.replace(imgRegex, (match) => {
+            const promptKey = match.trim();
+            const base64Data = imageRegistry[promptKey];
+            
+            if (base64Data) {
+              const caption = promptKey.replace(/^>\s*\*\*\[IMAGE PROMPT\]:\*\*/i, '').trim();
+              return `
+                <div class="image-container">
+                  <img src="${base64Data}" width="500" />
+                  <div class="img-caption">${caption}</div>
+                </div>
+              `;
+            }
+            return '';
+          });
+
+          // 2. CONVERT MARKDOWN TO HTML
+          processed = processed
+            .replace(/^# (.*$)/gim, '<h2>$1</h2>') 
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/^> (?!<div class="image-container")(.*$)/gim, '<blockquote>$1</blockquote>')
+            .replace(/^\s*-\s+(.*)$/gim, '<ul><li>$1</li></ul>')
+            .replace(/<\/ul>\s*<ul>/gim, '') 
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, ' '); 
+          
+          if (!processed.trim().startsWith('<')) {
+             processed = `<p>${processed}</p>`;
+          }
+
+          return processed;
+      };
 
       const allContent = ebookData.outline
         .filter(c => c.content)
         .map(c => {
-          const rawCleaned = cleanMarkdownForExport(c.content || '', imageRegistry);
-          const htmlBody = convertMarkdownToStaticHtml(rawCleaned);
-          return `<h1>${c.title}</h1>${htmlBody}`;
+          const htmlContent = processContent(c.content || '');
+          // Note: id="${c.id}" is critical for TOC anchor linking
+          return `
+            <div class="chapter">
+              <a name="${c.id}"></a> <!-- HTML 4.01 compatible anchor for Word -->
+              <h1 id="${c.id}" class="chapter-title">${c.title}</h1>
+              ${htmlContent}
+            </div>
+          `;
         })
         .join('\n');
 
-      const sourceHTML = header + titlePage + allContent + "</body></html>";
+      const sourceHTML = header + titlePage + tocSection + allContent + "</body></html>";
       
       const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), sourceHTML], { type: 'application/msword' });
       const url = URL.createObjectURL(blob);

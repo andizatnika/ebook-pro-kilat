@@ -331,20 +331,76 @@ const App: React.FC = () => {
     if (chapterIndex === -1) return;
     const chapter = ebookData.outline[chapterIndex];
 
+    // Set UI to loading state
     setGenState(prev => ({ 
         ...prev, 
         isGenerating: true, 
         currentTask: `Menulis: ${chapter.title}...` 
     }));
 
-    const newOutline = [...ebookData.outline];
-    newOutline[chapterIndex] = { ...chapter, status: 'generating' };
-    setEbookData(prev => ({ ...prev, outline: newOutline }));
+    setEbookData(prev => {
+        const newOutline = [...prev.outline];
+        newOutline[chapterIndex] = { ...chapter, status: 'generating' };
+        return { ...prev, outline: newOutline };
+    });
 
+    // --- LOGIC BARU: GENERATE DAFTAR ISI SECARA OTOMATIS (PROGRAMMATIC) ---
+    // Cek apakah chapter ini adalah Daftar Isi berdasarkan judulnya
+    const isTOC = chapter.title.toLowerCase().includes('daftar isi') || 
+                  chapter.title.toLowerCase().includes('table of contents') ||
+                  chapter.title.toLowerCase().includes('mokuji');
+
+    if (isTOC) {
+        try {
+            // Simulasi delay agar terasa seperti proses generate (UX)
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // Buat konten Daftar Isi berdasarkan struktur ebookData.outline
+            let tocContent = `Berikut adalah daftar isi lengkap untuk buku ini:\n\n`;
+            
+            // Loop melalui outline untuk membuat list
+            ebookData.outline.forEach(c => {
+                // Jangan masukkan "Daftar Isi" itu sendiri ke dalam list
+                if (c.id === chapterId) return;
+
+                // Format: - **Judul Chapter**
+                tocContent += `- **${c.title}**\n`;
+
+                // Jika ada subpoints, tambahkan sebagai nested list
+                if (c.subpoints && c.subpoints.length > 0) {
+                    c.subpoints.forEach(sp => {
+                        tocContent += `  - ${sp}\n`;
+                    });
+                }
+            });
+
+            // Update state dengan konten yang dibuat programmatically
+            setEbookData(prev => {
+                const updated = [...prev.outline];
+                updated[chapterIndex] = { ...updated[chapterIndex], status: 'completed', content: tocContent };
+                return { ...prev, outline: updated };
+            });
+            setHasUnsavedChanges(true);
+
+        } catch (e) {
+            console.error("Auto-TOC generation failed", e);
+            setEbookData(prev => {
+                const updated = [...prev.outline];
+                updated[chapterIndex] = { ...updated[chapterIndex], status: 'error' };
+                return { ...prev, outline: updated };
+            });
+        } finally {
+            // Matikan loading state, JANGAN panggil AI
+            setGenState(prev => ({ ...prev, isGenerating: false }));
+        }
+        return; // STOP di sini
+    }
+
+    // --- LOGIC LAMA: GENERATE CHAPTER BIASA MENGGUNAKAN AI ---
     try {
         let prevContext = "Awal Buku.";
         if (chapterIndex > 0) {
-            const prevChapter = newOutline[chapterIndex - 1];
+            const prevChapter = ebookData.outline[chapterIndex - 1]; // Use current state ref
             if (prevChapter.content) {
                 prevContext = `Bagian sebelumnya: "${prevChapter.title}" telah selesai.`;
             }
