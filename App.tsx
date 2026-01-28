@@ -125,29 +125,38 @@ const App: React.FC = () => {
     }
   };
 
-  // --- 3. CORE LOGIC: CREATE NEW PROJECT (FIXED) ---
+  // --- 3. CORE LOGIC: CREATE NEW PROJECT (FIXED & ROBUST) ---
   const handleCreateNewEbook = async () => {
     if (!session?.user) {
         alert("Sesi habis. Silakan login ulang.");
         return;
     }
 
-    if (ebookData.outline.length > 0 && hasUnsavedChanges) {
-       if (!window.confirm("Proyek saat ini memiliki perubahan yang belum disimpan. Yakin ingin menutup dan membuat baru? Perubahan terakhir akan hilang.")) {
-         return;
+    // A. CEK DATA LAMA: Apakah ada proyek aktif yg belum disave?
+    // Kita hanya peduli jika ada ID (sedang edit) DAN ada perubahan unsaved.
+    if (ebookData.id && hasUnsavedChanges) {
+       const confirmMsg = "Proyek yang sedang aktif memiliki perubahan yang belum disimpan.\n\nKlik 'OK' untuk membuang perubahan dan membuat proyek BARU.\nKlik 'Cancel' untuk membatalkan.";
+       if (!window.confirm(confirmMsg)) {
+         return; // User batal, tetap di proyek lama
        }
     }
 
     setIsSaving(true);
     try {
         console.log("Starting createEmptyEbook process...");
-        const newProject = await createEmptyEbook(session.user.id);
-        console.log("Project created:", newProject);
 
-        setEbookData(newProject);
+        // B. RESET TOTAL STATE (Penting agar data lama tidak bocor)
+        setEbookData({ title: '', subtitle: '', outline: [] }); // Kosongkan visual
         setImageRegistry({});
         setHasUnsavedChanges(false);
+        setGenState({ // Reset status loading/progress
+            isGenerating: false,
+            currentTask: '',
+            progress: 0,
+            logs: []
+        });
         
+        // Reset Form Setup ke Default
         setCurrentConfig({
           topic: '',
           chapterCount: 5,
@@ -157,13 +166,24 @@ const App: React.FC = () => {
           language: userSettings.language || 'id'
         });
 
-        // IMPORTANT: Move step strictly AFTER data is set
+        // C. BUAT ENTRY BARU DI DATABASE
+        // Fungsi ini akan mereturn Object baru dengan ID UNIK dari database
+        const newProject = await createEmptyEbook(session.user.id);
+        console.log("New Project Created with ID:", newProject.id);
+
+        // D. SET PROJECT BARU SEBAGAI AKTIF
+        setEbookData(newProject);
+
+        // E. PINDAH KE HALAMAN SETUP
+        // Gunakan setTimeout kecil untuk memastikan state react ter-flush jika perlu, 
+        // tapi biasanya langsung setStep aman.
         setStep(AppStep.SETUP);
 
     } catch (error: any) {
         console.error("FAILED TO CREATE PROJECT:", error);
-        // Show detailed error to user
         alert(`Gagal membuat proyek baru.\n\nDetail Error: ${error.message || JSON.stringify(error)}`);
+        // Jika gagal, kembalikan ke dashboard
+        setStep(AppStep.DASHBOARD);
     } finally {
         setIsSaving(false);
     }
@@ -236,6 +256,7 @@ const App: React.FC = () => {
       return;
     }
 
+    // Double check: Jika outline sudah ada di ebookData (sisa glitch), konfirmasi overwrite
     if (ebookData.outline.length > 0) {
        if (!window.confirm("Generate Outline akan menimpa struktur buku yang sudah ada di proyek ini. Lanjutkan?")) {
          return;
