@@ -151,6 +151,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
 
+                {/* Get API Key Button */}
+                <a
+                  href="https://aistudio.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-lg transition-all"
+                >
+                  <Key size={18} />
+                  Dapatkan API Key Google Gemini
+                </a>
+
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Input API Key</label>
                   <div className="relative">

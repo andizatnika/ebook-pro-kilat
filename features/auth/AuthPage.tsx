@@ -103,6 +103,7 @@ export const AuthPage: React.FC = () => {
                   <input
                     type="email"
                     required
+                    autoComplete="off"
                     className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     placeholder="nama@email.com"
                     value={email}
@@ -119,6 +120,7 @@ export const AuthPage: React.FC = () => {
                     type={showPassword ? "text" : "password"}
                     required
                     minLength={6}
+                    autoComplete="off"
                     className="w-full pl-10 pr-12 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                     placeholder="••••••••"
                     value={password}
