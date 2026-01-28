@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { X, Key, User, Globe, LogOut, CheckCircle, AlertCircle, Loader2, Save } from 'lucide-react';
 import { LanguageCode, UserSettings } from '../types';
 import { validateApiKey } from '../services/geminiService';
-import * as apiKeyService from '../services/apiKeyService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -10,7 +9,6 @@ interface SettingsModalProps {
   settings: UserSettings;
   onUpdateSettings: (newSettings: UserSettings) => void;
   onLogout: () => void;
-  userId?: string;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ 
@@ -18,8 +16,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose, 
   settings, 
   onUpdateSettings,
-  onLogout,
-  userId
+  onLogout 
 }) => {
   const [apiKeyInput, setApiKeyInput] = useState(settings.apiKey);
   const [validating, setValidating] = useState(false);
@@ -38,30 +35,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setValidating(true);
     setErrorMsg('');
     
-    if (!userId) {
-      setErrorMsg('User ID tidak ditemukan. Silakan login ulang.');
-      setValidating(false);
-      return;
-    }
-
-    try {
-      const result = await apiKeyService.validateAndSaveApiKey(userId, apiKeyInput);
-      
-      if (result.valid) {
-        onUpdateSettings({
-          ...settings,
-          apiKey: apiKeyInput,
-          isKeyValid: true
-        });
-        setErrorMsg('');
-      } else {
-        setErrorMsg(result.message);
+    const isValid = await validateApiKey(apiKeyInput);
+    
+    setValidating(false);
+    
+    if (isValid) {
+      // SAVE TO LOCAL STORAGE
+      try {
+        localStorage.setItem('gemini_api_key', apiKeyInput);
+      } catch (e) {
+        console.error("Could not save to local storage", e);
       }
-    } catch (error) {
-      console.error('Error saving API key:', error);
-      setErrorMsg('Terjadi kesalahan saat menyimpan API key. Silakan coba lagi.');
-    } finally {
-      setValidating(false);
+
+      onUpdateSettings({
+        ...settings,
+        apiKey: apiKeyInput,
+        isKeyValid: true
+      });
+      setErrorMsg(''); // clear error
+    } else {
+      setErrorMsg('API Key tidak valid. Pastikan key aktif dan benar.');
+      onUpdateSettings({
+        ...settings,
+        isKeyValid: false
+      });
     }
   };
 

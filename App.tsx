@@ -8,21 +8,14 @@ import { WriterWorkspace } from './features/editor/WriterWorkspace';
 import { SettingsModal } from './features/settings/SettingsModal';
 import { AuthPage } from './features/auth/AuthPage';
 import { Dashboard } from './features/dashboard/Dashboard';
-import { SetupApiKeyModal } from './components/SetupApiKeyModal';
 // Types & Services
 import { AppStep, EbookConfig, EbookData, GenerationState, ImageRegistry, UserSettings } from './types';
 import * as geminiService from './services/geminiService';
-import * as apiKeyService from './services/apiKeyService';
 import { Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-
-  // API Key Setup State
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKeyLoading, setApiKeyLoading] = useState(false);
-  const [apiKeyError, setApiKeyError] = useState('');
 
   // App Flow State
   const [step, setStep] = useState<AppStep>(AppStep.DASHBOARD);
@@ -95,15 +88,12 @@ const App: React.FC = () => {
         setImageRegistry({});
         setStep(AppStep.DASHBOARD);
         setShowSettings(false);
-        setShowApiKeyModal(false);
         setHasUnsavedChanges(false);
         setDashboardKey(0);
         setUserSettings(prev => ({
             ...prev,
             username: '',
             email: '',
-            apiKey: '',
-            isKeyValid: false,
         }));
       }
     });
@@ -111,62 +101,19 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSessionUpdate = async (session: any, apiKey: string) => {
+  const handleSessionUpdate = (session: any, apiKey: string) => {
     if (session?.user) {
-      // Check if user has API key in database
-      const dbApiKey = await apiKeyService.getUserApiKey(session.user.id);
-      const finalKey = dbApiKey || apiKey || '';
-
       setUserSettings(prev => ({
         ...prev,
         email: session.user.email || '',
         username: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-        apiKey: finalKey,
-        isKeyValid: !!finalKey
+        apiKey: prev.apiKey || apiKey, 
+        isKeyValid: !!(prev.apiKey || apiKey)
       }));
-
-      // If no API key found, show setup modal
-      if (!dbApiKey && !apiKey) {
-        setShowApiKeyModal(true);
-      }
     }
   };
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
-
-  // Handle API Key Setup
-  const handleApiKeySetup = async (apiKey: string) => {
-    if (!session?.user || !apiKey.trim()) return;
-
-    setApiKeyLoading(true);
-    setApiKeyError('');
-
-    try {
-      const result = await apiKeyService.validateAndSaveApiKey(
-        session.user.id,
-        apiKey
-      );
-
-      if (result.valid) {
-        // Update local settings
-        setUserSettings(prev => ({
-          ...prev,
-          apiKey: apiKey,
-          isKeyValid: true
-        }));
-
-        // Close modal
-        setShowApiKeyModal(false);
-      } else {
-        setApiKeyError(result.message);
-      }
-    } catch (error) {
-      console.error('API Key setup error:', error);
-      setApiKeyError('Terjadi kesalahan. Silakan coba lagi.');
-    } finally {
-      setApiKeyLoading(false);
-    }
-  };
 
   const handleApiError = (error: any, context: string) => {
     console.error(context, error);
@@ -610,14 +557,6 @@ const App: React.FC = () => {
         settings={userSettings}
         onUpdateSettings={setUserSettings}
         onLogout={handleLogout}
-        userId={session?.user?.id}
-      />
-
-      <SetupApiKeyModal
-        isOpen={showApiKeyModal}
-        onComplete={handleApiKeySetup}
-        isLoading={apiKeyLoading}
-        errorMessage={apiKeyError}
       />
     </Layout>
   );

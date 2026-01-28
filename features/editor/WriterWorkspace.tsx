@@ -276,6 +276,7 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
           }
           img { 
             max-width: 100%; 
+            width: 90%;
             height: auto; 
             border: 1px solid #e2e8f0;
             border-radius: 4px;
@@ -321,12 +322,12 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
         <br clear=all style='mso-special-character:line-break;page-break-before:always'>
       `;
 
-      // Helper for clean extraction
+      // Helper for clean extraction - IMPROVED FOR BETTER IMAGE HANDLING
       const processContent = (content: string) => {
           if (!content) return '';
           let processed = content;
 
-          // 1. INJECT IMAGES
+          // 1. INJECT IMAGES with improved formatting for Word
           const imgRegex = /^>\s*\*\*\[IMAGE PROMPT\]:\*\*(.*?)$/gm;
           processed = processed.replace(imgRegex, (match) => {
             const promptKey = match.trim();
@@ -334,10 +335,11 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
             
             if (base64Data) {
               const caption = promptKey.replace(/^>\s*\*\*\[IMAGE PROMPT\]:\*\*/i, '').trim();
+              // Use v:shape for better Word compatibility with embedded images
               return `
                 <div class="image-container">
-                  <img src="${base64Data}" width="500" />
-                  <div class="img-caption">${caption}</div>
+                  <img src="data:image/png;base64,${base64Data}" width="500" height="auto" alt="${caption.substring(0, 50)}" style="max-width: 500px; width: 90%; height: auto; border: 1px solid #ccc; border-radius: 4px;" />
+                  <p class="img-caption">${caption}</p>
                 </div>
               `;
             }
