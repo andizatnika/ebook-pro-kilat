@@ -1,0 +1,5 @@
+{
+  "name": "Pro Ebook Kilat",
+  "description": "A professional AI-powered ebook generator that guides users from brainstorming to a complete, formatted manuscript using the Gemini API.",
+  "requestFramePermissions": []
+}
