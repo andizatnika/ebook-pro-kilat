@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { EbookData, Chapter, GenerationState, AppStep, ImageRegistry } from '../types';
-import { Play, Check, Clock, Loader2, Download, FileText, ChevronDown, Edit2, Save, Image as ImageIcon, RefreshCw, Wand2, Cloud, CloudUpload, AlertCircle, Plus, AlertTriangle, RotateCcw, Trash2 } from 'lucide-react';
+import { Play, Check, Clock, Loader2, Download, FileText, ChevronDown, Edit2, Save, Image as ImageIcon, RefreshCw, Wand2, Cloud, CloudUpload, AlertCircle, Plus, AlertTriangle, RotateCcw, Trash2, Menu, X } from 'lucide-react';
 import { generateIllustration } from '../services/geminiService';
 
 interface WriterWorkspaceProps {
@@ -119,6 +119,7 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
   const [selectedPreview, setSelectedPreview] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const sections = useMemo(() => {
     return {
@@ -423,9 +424,19 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
   );
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* LEFT SIDEBAR - Navigation */}
-      <div className="w-80 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col shrink-0 no-print transition-colors duration-200">
+      <div className={`fixed lg:static inset-y-0 left-0 w-80 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col shrink-0 no-print transition-colors duration-200 z-50 lg:z-auto transform transition-transform duration-300 ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm z-10 flex flex-col gap-2">
             <div className="flex justify-between items-start gap-2">
                 <div className="overflow-hidden">
@@ -547,10 +558,19 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
 
       {/* RIGHT: Editor/Preview Area */}
       <div className="flex-1 flex flex-col h-full bg-white dark:bg-gray-900 relative transition-colors duration-200">
-        <div className="h-14 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 bg-white dark:bg-gray-900 shrink-0">
+        <div className="h-14 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 lg:px-6 bg-white dark:bg-gray-900 shrink-0">
+            {/* Mobile Menu Button */}
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
+              title={isSidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
+            >
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{activeChapter?.title}</span>
-                {hasContent && <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wide">Ready</span>}
+                <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">{activeChapter?.title}</span>
+                {hasContent && <span className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wide hidden sm:inline-block">Ready</span>}
             </div>
 
             {hasContent && (
@@ -560,7 +580,7 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
                             <Save size={14} /> Simpan Perubahan
                         </button>
                     ) : (
-                        <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 text-xs font-bold rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 text-xs font-bold rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors hidden sm:flex">
                             <Edit2 size={14} /> Edit Konten
                         </button>
                     )}
@@ -568,8 +588,8 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
             )}
         </div>
 
-        <div className="h-full overflow-y-auto px-12 py-12 scroll-smooth bg-gray-50/50 dark:bg-gray-950/50" ref={scrollRef}>
-            <div className={`max-w-3xl mx-auto min-h-[600px] bg-white dark:bg-gray-900 shadow-sm p-10 transition-colors duration-200 ${isEditing ? 'h-full' : ''}`}>
+        <div className="h-full overflow-y-auto px-4 lg:px-12 py-8 lg:py-12 scroll-smooth bg-gray-50/50 dark:bg-gray-950/50" ref={scrollRef}>
+            <div className={`max-w-3xl mx-auto min-h-[600px] bg-white dark:bg-gray-900 shadow-sm p-6 lg:p-10 transition-colors duration-200 ${isEditing ? 'h-full' : ''}`}>
                  
                  {hasContent ? (
                     isEditing ? (
