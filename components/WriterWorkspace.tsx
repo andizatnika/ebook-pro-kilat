@@ -437,10 +437,10 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
       <div className={`fixed lg:static inset-y-0 left-0 w-80 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 flex flex-col shrink-0 no-print transition-colors duration-200 z-50 lg:z-auto transform transition-transform duration-300 ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
-        {/* Close Button - Mobile Only */}
+        {/* Close Button - Visible on All Screens */}
         <button 
           onClick={() => setIsSidebarOpen(false)}
-          className="lg:hidden absolute top-3 right-3 z-20 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-sm"
+          className="absolute top-3 right-3 z-20 p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shadow-sm"
           title="Tutup Sidebar"
         >
           <X size={20} />
@@ -448,7 +448,7 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
 
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm z-10 flex flex-col gap-2">
             <div className="flex justify-between items-start gap-2">
-                <div className="overflow-hidden pr-8 lg:pr-0">
+                <div className="overflow-hidden pr-8">
                     <h3 className="font-bold text-gray-900 dark:text-white text-base leading-tight truncate" title={ebookData.title}>{ebookData.title || "Untitled Book"}</h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{ebookData.subtitle}</p>
                 </div>
@@ -568,13 +568,13 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
       {/* RIGHT: Editor/Preview Area */}
       <div className="flex-1 flex flex-col h-full bg-white dark:bg-gray-900 relative transition-colors duration-200">
         <div className="h-14 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 lg:px-6 bg-white dark:bg-gray-900 shrink-0">
-            {/* Mobile Menu Button */}
+            {/* Menu Button - Visible on All Screens */}
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border border-indigo-200 dark:border-indigo-800"
-              title="Buka Sidebar"
+              className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border border-indigo-200 dark:border-indigo-800"
+              title={isSidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
             >
-              <Menu size={22} strokeWidth={2.5} />
+              {isSidebarOpen ? <X size={22} strokeWidth={2.5} /> : <Menu size={22} strokeWidth={2.5} />}
             </button>
 
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
