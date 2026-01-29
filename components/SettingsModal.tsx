@@ -21,7 +21,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [apiKeyInput, setApiKeyInput] = useState(settings.apiKey);
   const [validating, setValidating] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [activeTab, setActiveTab] = useState<'account' | 'api' | 'lang'>('api');
+  const [activeTab, setActiveTab] = useState<'account' | 'lang'>('lang');
 
   // Sync state when modal opens
   useEffect(() => {
@@ -95,12 +95,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Sidebar Tabs */}
           <div className="w-1/3 bg-gray-50 dark:bg-gray-900/50 border-r border-gray-100 dark:border-gray-700 p-4 space-y-2">
             <button 
-              onClick={() => setActiveTab('api')}
-              className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'api' ? 'bg-white dark:bg-gray-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-            >
-              <Key size={18} /> API Key
-            </button>
-            <button 
               onClick={() => setActiveTab('lang')}
               className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'lang' ? 'bg-white dark:bg-gray-800 shadow text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
             >
@@ -126,50 +120,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Content Area */}
           <div className="flex-1 p-6 overflow-y-auto bg-white dark:bg-gray-800">
             
-            {/* API Key Section */}
-            {activeTab === 'api' && (
-              <div className="space-y-6 animate-fade-in">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Google Gemini API Key</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Kunci akses diperlukan untuk menggunakan fitur generasi AI.</p>
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 flex items-start gap-3">
-                  <AlertCircle size={20} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <p>API Key disimpan secara aman di sesi browser Anda. Kami tidak menyimpan key Anda di server kami.</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Input API Key</label>
-                  <div className="relative">
-                    <input 
-                      type="password" 
-                      value={apiKeyInput}
-                      onChange={(e) => setApiKeyInput(e.target.value)}
-                      placeholder="AIzaSy..."
-                      className={`w-full pl-10 pr-4 py-3 rounded-lg border ${settings.isKeyValid ? 'border-green-300 focus:ring-green-500' : errorMsg ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 outline-none transition-all`}
-                    />
-                    <Key size={18} className="absolute left-3 top-3.5 text-gray-400" />
-                    {settings.isKeyValid && !errorMsg && (
-                      <CheckCircle size={18} className="absolute right-3 top-3.5 text-green-500" />
-                    )}
-                  </div>
-                  {errorMsg && <p className="text-xs text-red-500 font-medium">{errorMsg}</p>}
-                </div>
-
-                <button 
-                  onClick={handleSaveApiKey}
-                  disabled={validating || !apiKeyInput}
-                  className={`w-full py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${settings.isKeyValid ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-gray-300 disabled:cursor-not-allowed'}`}
-                >
-                  {validating ? <Loader2 className="animate-spin" size={18}/> : settings.isKeyValid ? <CheckCircle size={18}/> : <Save size={18}/>}
-                  {validating ? 'Memvalidasi...' : settings.isKeyValid ? 'Tersimpan & Aktif' : 'Simpan & Aktifkan'}
-                </button>
-              </div>
-            )}
-
             {/* Language Section */}
             {activeTab === 'lang' && (
               <div className="space-y-6 animate-fade-in">
