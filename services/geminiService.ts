@@ -194,39 +194,18 @@ export const generateChapterContent = async (
 };
 
 export const generateIllustration = async (promptText: string): Promise<string> => {
-  try {
-    const ai = getClient();
-    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: IMAGE_MODEL_NAME,
-      contents: {
-        parts: [
-          { text: promptText }
-        ]
-      },
-      config: {
-        imageConfig: {
-            aspectRatio: "16:9"
-        }
-      }
-    }));
-
-    const parts = response.candidates?.[0]?.content?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    
-    const textPart = parts?.find(p => p.text);
-    if (textPart) {
-      console.warn("Image generation returned text:", textPart.text);
-    }
-    
-    throw new Error("No image data found in response");
-  } catch (error) {
-    console.error("Image Generation Error:", error);
-    throw error;
-  }
+  // Note: Gemini API tidak support native image generation saat ini
+  // Returning placeholder atau bisa integrate dengan service lain seperti DALL-E, Stable Diffusion, dll
+  
+  console.log("Image generation prompt:", promptText);
+  
+  // Untuk sementara, return placeholder image dari service gratis
+  // Atau bisa return empty string untuk skip image generation
+  
+  // Option 1: Skip image generation
+  throw new Error("Image generation temporarily disabled");
+  
+  // Option 2: Gunakan placeholder service (uncomment jika ingin gunakan)
+  // const placeholder = `https://via.placeholder.com/1200x675/6366f1/ffffff?text=${encodeURIComponent('Ilustrasi: ' + promptText.substring(0, 50))}`;
+  // return placeholder;
 };

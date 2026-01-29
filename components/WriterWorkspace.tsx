@@ -73,25 +73,29 @@ const AIIllustrationBlock: React.FC<{
   }
 
   return (
-    <div className="my-6 p-6 rounded-lg border-2 border-dashed border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/10 flex flex-col items-center justify-center text-center">
+    <div className="my-6 p-6 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex flex-col items-center justify-center text-center">
       {loading ? (
         <div className="flex flex-col items-center gap-2 text-indigo-600 dark:text-indigo-400">
           <Wand2 className="w-8 h-8 animate-spin" />
           <span className="text-sm font-semibold animate-pulse">Sedang menggambar ilustrasi AI...</span>
         </div>
       ) : error ? (
-        <div className="flex flex-col items-center gap-2 text-red-500">
-          <span className="text-sm">Gagal membuat gambar.</span>
-          <button onClick={handleRetry} className="text-xs underline font-bold">Coba Lagi</button>
+        <div className="flex flex-col items-center gap-3 text-gray-500 dark:text-gray-400">
+          <ImageIcon className="w-12 h-12 opacity-30" />
+          <div className="text-center">
+            <p className="text-sm font-medium mb-1">Fitur Generate Gambar Sementara Nonaktif</p>
+            <p className="text-xs">Gemini API saat ini tidak mendukung image generation.</p>
+            <p className="text-xs text-gray-400 mt-2">Ilustrasi dapat ditambahkan manual saat editing.</p>
+          </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-2 text-indigo-400">
+        <div className="flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500">
            <ImageIcon className="w-8 h-8 opacity-50" />
-           <span className="text-xs">Menyiapkan generator gambar...</span>
+           <span className="text-xs">Placeholder untuk ilustrasi</span>
         </div>
       )}
-      <div className="mt-2 text-[10px] text-gray-400 max-w-md truncate">
-        {prompt}
+      <div className="mt-3 text-[10px] text-gray-400 dark:text-gray-600 max-w-md line-clamp-2 px-4">
+        <strong>Prompt:</strong> {prompt.replace(/^>\s*\*\*\[IMAGE PROMPT\]:\*\*/i, '').trim()}
       </div>
     </div>
   );
