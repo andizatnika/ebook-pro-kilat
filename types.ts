@@ -47,8 +47,6 @@ export interface GenerationState {
 export interface UserSettings {
   username: string;
   email: string;
-  apiKey: string;
-  isKeyValid: boolean;
   language: LanguageCode;
 }
 

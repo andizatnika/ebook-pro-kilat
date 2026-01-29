@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, User, Globe, LogOut, CheckCircle, AlertCircle, Loader2, Save } from 'lucide-react';
+import { X, User, Globe, LogOut, CheckCircle } from 'lucide-react';
 import { LanguageCode, UserSettings } from '../types';
-import { validateApiKey } from '../services/geminiService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -18,49 +17,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateSettings,
   onLogout 
 }) => {
-  const [apiKeyInput, setApiKeyInput] = useState(settings.apiKey);
-  const [validating, setValidating] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
   const [activeTab, setActiveTab] = useState<'account' | 'lang'>('lang');
 
   // Sync state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setApiKeyInput(settings.apiKey);
-      setErrorMsg('');
+      // Modal opened
     }
-  }, [isOpen, settings.apiKey]);
-
-  const handleSaveApiKey = async () => {
-    setValidating(true);
-    setErrorMsg('');
-    
-    const isValid = await validateApiKey(apiKeyInput);
-    
-    setValidating(false);
-    
-    if (isValid) {
-      // SAVE TO LOCAL STORAGE
-      try {
-        localStorage.setItem('gemini_api_key', apiKeyInput);
-      } catch (e) {
-        console.error("Could not save to local storage", e);
-      }
-
-      onUpdateSettings({
-        ...settings,
-        apiKey: apiKeyInput,
-        isKeyValid: true
-      });
-      setErrorMsg(''); // clear error
-    } else {
-      setErrorMsg('API Key tidak valid. Pastikan key aktif dan benar.');
-      onUpdateSettings({
-        ...settings,
-        isKeyValid: false
-      });
-    }
-  };
+  }, [isOpen]);
 
   const languages: { code: LanguageCode; label: string; flag: string }[] = [
     { code: 'id', label: 'Bahasa Indonesia', flag: '🇮🇩' },

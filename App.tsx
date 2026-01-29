@@ -31,8 +31,6 @@ const App: React.FC = () => {
   const [userSettings, setUserSettings] = useState<UserSettings>({
     username: '',
     email: '',
-    apiKey: '', 
-    isKeyValid: false,
     language: 'id' 
   });
 
@@ -64,14 +62,10 @@ const App: React.FC = () => {
 
   // --- 1. AUTH & INIT ---
   useEffect(() => {
-    let initialKey = (typeof process !== 'undefined' && process.env && process.env.API_KEY) || '';
-    const storedKey = localStorage.getItem('gemini_api_key');
-    if (storedKey) initialKey = storedKey;
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
-        handleSessionUpdate(session, initialKey);
+        handleSessionUpdate(session);
       }
       setAuthLoading(false);
     });
@@ -79,7 +73,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       if (session) {
-        handleSessionUpdate(session, initialKey);
+        handleSessionUpdate(session);
       }
       setAuthLoading(false);
       
@@ -101,14 +95,12 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSessionUpdate = (session: any, apiKey: string) => {
+  const handleSessionUpdate = (session: any) => {
     if (session?.user) {
       setUserSettings(prev => ({
         ...prev,
         email: session.user.email || '',
         username: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-        apiKey: prev.apiKey || apiKey, 
-        isKeyValid: !!(prev.apiKey || apiKey)
       }));
     }
   };
@@ -250,12 +242,6 @@ const App: React.FC = () => {
 
   // --- GENERATION FLOW ---
   const handleStart = async (config: EbookConfig) => {
-    if (!userSettings.isKeyValid || !userSettings.apiKey) {
-      alert("Silakan atur Google Gemini API Key di menu Pengaturan.");
-      setShowSettings(true);
-      return;
-    }
-
     // Double check: Jika outline sudah ada di ebookData (sisa glitch), konfirmasi overwrite
     if (ebookData.outline.length > 0) {
        if (!window.confirm("Generate Outline akan menimpa struktur buku yang sudah ada di proyek ini. Lanjutkan?")) {
@@ -288,7 +274,7 @@ const App: React.FC = () => {
 
     try {
       const finalConfig = { ...config, language: userSettings.language };
-      const result = await geminiService.generateOutline(finalConfig, userSettings.apiKey);
+      const result = await geminiService.generateOutline(finalConfig);
       
       const updatedData = {
         ...ebookData,
@@ -321,12 +307,6 @@ const App: React.FC = () => {
   };
 
   const handleGenerateChapter = useCallback(async (chapterId: string) => {
-    if (!userSettings.apiKey) {
-        alert("API Key hilang. Silakan masukkan kembali di Pengaturan.");
-        setShowSettings(true);
-        return;
-    }
-
     const chapterIndex = ebookData.outline.findIndex(c => c.id === chapterId);
     if (chapterIndex === -1) return;
     const chapter = ebookData.outline[chapterIndex];
@@ -410,7 +390,6 @@ const App: React.FC = () => {
           chapter, 
           ebookData.title, 
           prevContext,
-          userSettings.apiKey,
           userSettings.language
         );
 
@@ -432,7 +411,7 @@ const App: React.FC = () => {
     } finally {
         setGenState(prev => ({ ...prev, isGenerating: false }));
     }
-  }, [ebookData, userSettings.apiKey, userSettings.language]);
+  }, [ebookData, userSettings.language]);
 
   const handleUpdateChapter = (chapterId: string, newContent: string) => {
     setEbookData(prev => {
@@ -537,7 +516,6 @@ const App: React.FC = () => {
             ebookData={ebookData} 
             genState={genState}
             imageRegistry={imageRegistry}
-            apiKey={userSettings.apiKey}
             onGenerateChapter={handleGenerateChapter}
             onUpdateChapter={handleUpdateChapter}
             onImageGenerated={handleImageGenerated}

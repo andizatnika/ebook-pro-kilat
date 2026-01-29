@@ -5,8 +5,18 @@ import { EbookConfig, Chapter, SectionType } from '../types';
 const MODEL_NAME = 'gemini-3-flash-preview';
 const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image';
 
-// Helper to get client with dynamic key
-const getClient = (apiKey: string) => {
+// Helper to get API key from environment
+const getApiKey = (): string => {
+  const key = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("API Key tidak ditemukan di environment variables");
+  }
+  return key;
+};
+
+// Helper to get client with environment API key
+const getClient = () => {
+  const apiKey = getApiKey();
   return new GoogleGenAI({ apiKey: apiKey });
 };
 
@@ -35,10 +45,9 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, baseDelay = 2000)
   }
 };
 
-export const validateApiKey = async (apiKey: string): Promise<boolean> => {
-  if (!apiKey) return false;
+export const validateApiKey = async (): Promise<boolean> => {
   try {
-    const ai = getClient(apiKey);
+    const ai = getClient();
     // Lightweight test call
     await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -67,9 +76,9 @@ const cleanJson = (text: string): string => {
   return cleaned.trim();
 };
 
-export const generateOutline = async (config: EbookConfig, apiKey: string): Promise<{ title: string; subtitle: string; chapters: Chapter[] }> => {
+export const generateOutline = async (config: EbookConfig): Promise<{ title: string; subtitle: string; chapters: Chapter[] }> => {
   try {
-    const ai = getClient(apiKey);
+    const ai = getClient();
     const prompt = OUTLINE_PROMPT_TEMPLATE(
       config.topic,
       config.chapterCount,
@@ -156,11 +165,10 @@ export const generateChapterContent = async (
   chapter: Chapter, 
   ebookTitle: string,
   prevContext: string = "N/A",
-  apiKey: string,
   language: string
 ): Promise<string> => {
   try {
-    const ai = getClient(apiKey);
+    const ai = getClient();
     const prompt = SECTION_PROMPT_TEMPLATE(
         chapter.title, 
         chapter.sectionType, 
@@ -185,9 +193,9 @@ export const generateChapterContent = async (
   }
 };
 
-export const generateIllustration = async (promptText: string, apiKey: string): Promise<string> => {
+export const generateIllustration = async (promptText: string): Promise<string> => {
   try {
-    const ai = getClient(apiKey);
+    const ai = getClient();
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: IMAGE_MODEL_NAME,
       contents: {

@@ -8,7 +8,6 @@ interface WriterWorkspaceProps {
   ebookData: EbookData;
   genState: GenerationState;
   imageRegistry: ImageRegistry;
-  apiKey: string; 
   onGenerateChapter: (chapterId: string) => void;
   onUpdateChapter: (chapterId: string, content: string) => void;
   onImageGenerated: (promptKey: string, base64: string) => void;
@@ -24,15 +23,14 @@ interface WriterWorkspaceProps {
 const AIIllustrationBlock: React.FC<{ 
   prompt: string; 
   existingImage?: string; 
-  apiKey: string;
   onGenerate: (prompt: string, img: string) => void; 
-}> = ({ prompt, existingImage, apiKey, onGenerate }) => {
+}> = ({ prompt, existingImage, onGenerate }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const attemptRef = useRef(false);
 
   useEffect(() => {
-    if (!existingImage && !loading && !attemptRef.current && !error && apiKey) {
+    if (!existingImage && !loading && !attemptRef.current && !error) {
       const generate = async () => {
         setLoading(true);
         attemptRef.current = true;
@@ -45,7 +43,7 @@ const AIIllustrationBlock: React.FC<{
           
           if (!cleanPrompt) throw new Error("Empty prompt");
 
-          const base64 = await generateIllustration(cleanPrompt, apiKey);
+          const base64 = await generateIllustration(cleanPrompt);
           onGenerate(prompt, base64);
         } catch (e) {
           console.error("Auto image gen failed", e);
@@ -56,7 +54,7 @@ const AIIllustrationBlock: React.FC<{
       };
       generate();
     }
-  }, [existingImage, prompt, loading, error, onGenerate, apiKey]);
+  }, [existingImage, prompt, loading, error, onGenerate]);
 
   const handleRetry = async () => {
     setError(false);
@@ -100,10 +98,8 @@ const AIIllustrationBlock: React.FC<{
 };
 
 export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({ 
-  ebookData, 
   genState, 
   imageRegistry,
-  apiKey,
   onGenerateChapter, 
   onUpdateChapter,
   onImageGenerated,
@@ -631,7 +627,6 @@ export const WriterWorkspace: React.FC<WriterWorkspaceProps> = ({
                                               <AIIllustrationBlock 
                                                 prompt={text} 
                                                 existingImage={imageRegistry[text]}
-                                                apiKey={apiKey}
                                                 onGenerate={onImageGenerated}
                                               />
                                             );
