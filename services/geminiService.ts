@@ -3,22 +3,11 @@ import { SYSTEM_PERSONA, OUTLINE_PROMPT_TEMPLATE, SECTION_PROMPT_TEMPLATE } from
 import { EbookConfig, Chapter, SectionType } from '../types';
 
 const MODEL_NAME = 'gemini-3-flash-preview';
-const IMAGE_MODEL_NAME = 'gemini-2.5-flash-image';
 
-// Helper to get API key from environment
-const getApiKey = (): string => {
-  const key = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!key) {
-    throw new Error("API Key tidak ditemukan di environment variables");
-  }
-  return key;
-};
-
-// Helper to get client with environment API key
-const getClient = () => {
-  const apiKey = getApiKey();
-  return new GoogleGenAI({ apiKey: apiKey });
-};
+// Backend API endpoints
+const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3002';
+const GENERATE_OUTLINE_ENDPOINT = `${API_BASE}/api/generate-outline`;
+const GENERATE_CHAPTER_ENDPOINT = `${API_BASE}/api/generate-chapter`;
 
 // Helper for exponential backoff retry
 const withRetry = async <T>(fn: () => Promise<T>, retries = 3, baseDelay = 2000): Promise<T> => {
@@ -27,7 +16,6 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, baseDelay = 2000)
   } catch (error: any) {
     const isQuotaError = error?.status === 429 || error?.code === 429 || error?.message?.includes('429') || error?.status === 'RESOURCE_EXHAUSTED' || error?.message?.includes('quota');
     const isServerError = error?.status === 503 || error?.code === 503;
-    // Handle generic abort errors often caused by network instability or timeouts
     const isAbortError = error?.name === 'AbortError' || error?.message?.includes('aborted');
 
     if ((isQuotaError || isServerError || isAbortError) && retries > 0) {
@@ -36,7 +24,6 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, baseDelay = 2000)
       return withRetry(fn, retries - 1, baseDelay * 2);
     }
     
-    // Enrich error message for UI if it's a quota issue
     if (isQuotaError) {
        throw new Error("QUOTA_EXHAUSTED");
     }
@@ -46,16 +33,15 @@ const withRetry = async <T>(fn: () => Promise<T>, retries = 3, baseDelay = 2000)
 };
 
 export const validateApiKey = async (): Promise<boolean> => {
+  // Validation now happens on server-side
+  // Just return true if backend is reachable
   try {
-    const ai = getClient();
-    // Lightweight test call
-    await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: 'test',
-    }));
-    return true;
+    const response = await fetch(GENERATE_OUTLINE_ENDPOINT, {
+      method: 'OPTIONS'
+    });
+    return response.ok;
   } catch (error) {
-    console.error("API Key Validation Failed:", error);
+    console.error("Backend connectivity check failed:", error);
     return false;
   }
 };
@@ -78,7 +64,6 @@ const cleanJson = (text: string): string => {
 
 export const generateOutline = async (config: EbookConfig): Promise<{ title: string; subtitle: string; chapters: Chapter[] }> => {
   try {
-    const ai = getClient();
     const prompt = OUTLINE_PROMPT_TEMPLATE(
       config.topic,
       config.chapterCount,
@@ -88,42 +73,55 @@ export const generateOutline = async (config: EbookConfig): Promise<{ title: str
       config.language
     );
 
-    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_PERSONA(config.language),
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            subtitle: { type: Type.STRING },
-            sections: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  type: { 
-                    type: Type.STRING,
-                    description: "One of: front, body, back" 
+    const response = await withRetry(async () => {
+      const res = await fetch(GENERATE_OUTLINE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          systemInstruction: SYSTEM_PERSONA(config.language),
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING },
+              subtitle: { type: Type.STRING },
+              sections: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    type: { 
+                      type: Type.STRING,
+                      description: "One of: front, body, back" 
+                    },
+                    points: { 
+                      type: Type.ARRAY, 
+                      items: { type: Type.STRING } 
+                    }
                   },
-                  points: { 
-                    type: Type.ARRAY, 
-                    items: { type: Type.STRING } 
-                  }
-                },
-                required: ["title", "type", "points"]
+                  required: ["title", "type", "points"]
+                }
               }
-            }
-          },
-          required: ["title", "sections"]
-        }
-      }
-    }));
+            },
+            required: ["title", "sections"]
+          }
+        })
+      });
 
-    if (!response.text) throw new Error("No response from Gemini");
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to generate outline');
+      }
+
+      return res.json();
+    });
+
+    if (!response.success || !response.text) {
+      throw new Error("No response from backend");
+    }
     
     const cleanText = cleanJson(response.text);
     let data;
@@ -154,13 +152,6 @@ export const generateOutline = async (config: EbookConfig): Promise<{ title: str
       subtitle: data.subtitle || "",
       chapters
     };
-
-  } catch (error) {
-    console.error("Outline Generation Error:", error);
-    throw error;
-  }
-};
-
 export const generateChapterContent = async (
   chapter: Chapter, 
   ebookTitle: string,
@@ -168,7 +159,6 @@ export const generateChapterContent = async (
   language: string
 ): Promise<string> => {
   try {
-    const ai = getClient();
     const prompt = SECTION_PROMPT_TEMPLATE(
         chapter.title, 
         chapter.sectionType, 
@@ -178,13 +168,25 @@ export const generateChapterContent = async (
         language
     );
 
-    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        systemInstruction: SYSTEM_PERSONA(language),
+    const response = await withRetry(async () => {
+      const res = await fetch(GENERATE_CHAPTER_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          systemInstruction: SYSTEM_PERSONA(language)
+        })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to generate chapter');
       }
-    }));
+
+      return res.json();
+    });
 
     return response.text || "";
   } catch (error) {
